@@ -26,12 +26,13 @@ def get_max_offset(soup):
     return all_offset
 
 
-def create_url(people, country, city, datein, dateout, offset):
+def create_url(people, country, city, datein, dateout, no_rooms, score_filter, offset):
 
-    url = "https://www.booking.com/searchresults.it.html?checkin_month={in_month}" \
+    url = "https://www.booking.com/searchresults.en-gb.html?selected_currency=USD&checkin_month={in_month}" \
         "&checkin_monthday={in_day}&checkin_year={in_year}&checkout_month={out_month}" \
         "&checkout_monthday={out_day}&checkout_year={out_year}&group_adults={people}" \
         "&group_children=0&order=price&ss={city}%2C%20{country}&offset={offset}"\
+        "&no_rooms={no_rooms}"\
         .format(in_month=str(datein.month),
                 in_day=str(datein.day),
                 in_year=str(datein.year),
@@ -41,18 +42,28 @@ def create_url(people, country, city, datein, dateout, offset):
                 people=people,
                 city=city,
                 country=country,
-                offset=offset)
+                offset=offset,
+                no_rooms=no_rooms)
+    if score_filter:
+        if score_filter == '9+':
+            url += '&nflt=review_score%3D90%3B'
+        elif score_filter == '8+':
+            url += '&nflt=review_score%3D80%3B'
+        elif score_filter == '7+':
+            url += '&nflt=review_score%3D70%3B'
+        elif score_filter == '6+':
+            url += '&nflt=review_score%3D60%3B'
 
     return url
 
 
-def process_data(people, country, city, datein, dateout, is_detail, limit):
+def process_data(people, country, city, datein, dateout, no_rooms, score_filter, is_detail, limit):
     offset = 0
     threads = []
     max_offset = 0
 
-    starting_url = create_url(people, country, city, datein, dateout, offset)
-    # print(starting_url)
+    starting_url = create_url(people, country, city, datein, dateout, no_rooms, score_filter, offset)
+    print(starting_url)
     if is_verbose:
         print("[~] Url created:" + "\n" + "\t" + starting_url)
 
@@ -78,14 +89,14 @@ def process_data(people, country, city, datein, dateout, is_detail, limit):
         for i in range(int(max_offset)):
             offset += 25
             t = ThreadScraper(session, offset, people, country, city,
-                              datein, dateout, is_detail, parsing_data)
+                              datein, dateout, no_rooms, score_filter, is_detail, parsing_data)
             threads.append(t)
         for t in threads:
             t.start()
         for t in threads:
             t.join()
     else:
-        t = ThreadScraper(session, offset, people, country, city, datein, dateout, is_detail, parsing_data)
+        t = ThreadScraper(session, offset, people, country, city, datein, dateout, no_rooms, score_filter, is_detail, parsing_data)
         threads.append(t)
         t.start()
         t.join()
@@ -93,10 +104,10 @@ def process_data(people, country, city, datein, dateout, is_detail, limit):
     return ThreadScraper.process_result
 
 
-def parsing_data(session, people, country, city, datein, dateout, offset, is_detail):
+def parsing_data(session, people, country, city, datein, dateout, no_rooms, score_filter, offset, is_detail):
 
     result = []
-    data_url = create_url(people, country, city, datein, dateout, offset)
+    data_url = create_url(people, country, city, datein, dateout, no_rooms, score_filter, offset)
 
     response = session.get(data_url, headers=REQUEST_HEADER)
     soup = BeautifulSoup(response.text, "lxml")
@@ -152,7 +163,6 @@ def parsing_data(session, people, country, city, datein, dateout, offset, is_det
 
 
 def get_result(**kwargs):
-    result = []
     today = datetime.datetime.now()
     tomorrow = today + datetime.timedelta(1)
 
@@ -160,7 +170,9 @@ def get_result(**kwargs):
     country = kwargs.get('country', None)
     city = kwargs.get('city', None)
     datein = kwargs.get('datein', today)
-    dateout = kwargs.get('datein', tomorrow)
+    dateout = kwargs.get('dateout', tomorrow)
+    no_rooms = kwargs.get('rooms', 1)
+    score_filter = kwargs.get('score_filter', None)
     is_detail = kwargs.get('detail', False)
     limit = kwargs.get('limit', -1)
 
@@ -172,19 +184,19 @@ def get_result(**kwargs):
         datein = datetime.datetime.strptime(datein, "%Y-%m-%d")
         dateout = datetime.datetime.strptime(dateout, "%Y-%m-%d")
 
-    result = process_data(people, country, city, datein, dateout, is_detail, limit)
+    result = process_data(people, country, city, datein, dateout, no_rooms, score_filter, is_detail, limit)
 
     return result
 
 
-def retrieve_data(people, country, city, datein, dateout, outdir, is_detail, limit):
+def retrieve_data(people, country, city, datein, dateout, no_rooms, score_filter, outdir, is_detail, limit):
 
     result = []
     if isinstance(datein, str) or isinstance(dateout, str):
         datein = datetime.datetime.strptime(datein, "%Y-%m-%d")
         dateout = datetime.datetime.strptime(dateout, "%Y-%m-%d")
 
-    result = process_data(people, country, city, datein, dateout, is_detail, limit)
+    result = process_data(people, country, city, datein, dateout, no_rooms, score_filter, is_detail, limit)
 
     if outdir == "":
         outdir = ("./" + country + city + "_" + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ".json").replace(" ", "_").replace(":", "_")
@@ -241,4 +253,5 @@ if __name__ == "__main__":
     if args.verbose:
         is_verbose = True
 
-    retrieve_data(args.people, args.country, args.city, args.datein, args.dateout, args.outdir, args.detail, args.limit)
+    retrieve_data(args.people, args.country, args.city, args.datein, args.dateout, args.no_rooms, args.score_filter,
+                  args.outdir, args.detail, args.limit)

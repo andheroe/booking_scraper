@@ -2,28 +2,32 @@ from bs4 import BeautifulSoup
 
 
 def get_hotel_name(hotel):
-    if hotel.select_one("span.sr-hotel__name") is None:
+    identifier = "span.sr-hotel__name"
+    if hotel.select_one(identifier) is None:
         return ''
     else:
-        return hotel.select_one("span.sr-hotel__name").text.strip()
+        return hotel.select_one(identifier).text.strip()
 
 def get_hotel_score(hotel):
-    if hotel.select_one("div.bui-review-score__badge") is None:
+    identifier = "div.bui-review-score__badge"
+    if hotel.select_one(identifier) is None:
         return ''
     else:
-        return hotel.select_one("div.bui-review-score__badge").text.strip()
+        return hotel.select_one(identifier).text.strip()
 
 def get_hotel_price(hotel):
-    if hotel.select_one("div.bui-price-display__value.prco-inline-block-maker-helper") is None:
+    identifier = "div.bui-price-display__value.prco-text-nowrap-helper.prco-inline-block-maker-helper"
+    if hotel.select_one(identifier) is None:
         return ''
     else:
-        return hotel.select_one("div.bui-price-display__value.prco-inline-block-maker-helper").text.strip()[2:]
+        return hotel.select_one(identifier).text.strip()[2:]
 
 def get_hotel_detail_link(hotel):
-    if hotel.select_one(".txp-cta.bui-button.bui-button--primary.sr_cta_button") is None:
+    identifier = ".txp-cta.bui-button.bui-button--primary.sr_cta_button"
+    if hotel.select_one(identifier) is None:
         return ''
     else:
-        return hotel.select_one(".txp-cta.bui-button.bui-button--primary.sr_cta_button")['href']
+        return hotel.select_one(identifier)['href']
 
 def get_coordinates(soup_detail):
     coordinates = []
